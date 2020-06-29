@@ -110,6 +110,8 @@ func (n *Node) HandleCommand(s *Session, raw []byte) error {
 		return n.Unsubscribe(s, msg)
 	case "message":
 		return n.Perform(s, msg)
+	case "exec":
+		return n.Exec(s, msg)
 	default:
 		n.Metrics.Counter(metricsUnknownReceived).Inc()
 		return fmt.Errorf("Unknown command: %s", msg.Command)
@@ -283,6 +285,23 @@ func (n *Node) Perform(s *Session, msg *common.Message) (err error) {
 
 	return
 }
+
+func (n *Node) Exec(s *Session, msg *common.Message) (err error) {
+	res, err := n.controller.Perform(s.UID, s.env, s.Identifiers, msg.Identifier, msg.Data)
+
+	if err != nil {
+		s.Log.Errorf("Perform error: %v", err)
+	} else {
+		s.Log.Debugf("Perform result: %v", res)
+	}
+
+	if res != nil {
+		n.handleCommandReply(s, msg, res)
+	}
+
+	return
+}
+
 
 // Broadcast message to stream
 func (n *Node) Broadcast(msg *common.StreamMessage) {
